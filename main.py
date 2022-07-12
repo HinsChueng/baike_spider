@@ -83,7 +83,7 @@ def after_handle(func):
         logger.info(f'{len(result[HTTP_WRONG])} 个向百度百科发起请求时发生http错误，【失败】')
         logger.info(f'{len(result[BAIKE_NO_RESULT])} 个百度百科【没有相关结果】')
 
-        baidu_handler.write_to_excel('未处理名录.xlsx', ['中文名称'], result[BAIKE_NO_RESULT])
+        BaiduHandler.write_to_excel('未处理名录.xlsx', ['中文名称'], result[BAIKE_NO_RESULT])
 
         with open('处理结果合计.json', 'w') as f:
             f.write(json.dumps(result, ensure_ascii=False))
@@ -125,4 +125,4 @@ def run():
 
 if __name__ == '__main__':
     # run()
-    handle_one('会理非拟溪蟹')
+    handle_one('妆翅球螋')
