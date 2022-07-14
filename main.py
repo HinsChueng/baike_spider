@@ -8,9 +8,10 @@ import traceback
 import pandas
 from bs4 import BeautifulSoup
 
+from common.file import write_to_file, write_to_excel
 from config import HTML_PATH, WAIT_TIME, SOURCE_FILE_PATH
 from spider import BaiduSpider, BaiduHandler
-from log import get_logger
+from common.log import get_logger
 
 baidu_spider = BaiduSpider()
 baidu_handler = BaiduHandler()
@@ -44,7 +45,7 @@ def handle_one(keyword):
             logger.error(f'向百度百科发起请求时发生http错误： {keyword}\n')
             return HTTP_WRONG
 
-        baidu_handler.write_to_file(html_path, html)
+        write_to_file(html_path, html)
         handle_result = HTTP_SUC
 
     soup = BeautifulSoup(html, features='lxml')
@@ -83,7 +84,7 @@ def after_handle(func):
         logger.info(f'{len(result[HTTP_WRONG])} 个向百度百科发起请求时发生http错误，【失败】')
         logger.info(f'{len(result[BAIKE_NO_RESULT])} 个百度百科【没有相关结果】')
 
-        BaiduHandler.write_to_excel('未处理名录.xlsx', ['中文名称'], result[BAIKE_NO_RESULT])
+        write_to_excel('未处理名录.xlsx', ['中文名称'], result[BAIKE_NO_RESULT])
 
         with open('处理结果合计.json', 'w') as f:
             f.write(json.dumps(result, ensure_ascii=False))
@@ -125,4 +126,4 @@ def run():
 
 if __name__ == '__main__':
     # run()
-    handle_one('妆翅球螋')
+    handle_one('榛新黑斑蚜')

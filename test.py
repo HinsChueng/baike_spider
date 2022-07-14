@@ -1,9 +1,8 @@
-import json
 import os
 import re
 
-from config import SLICED_EXCEL_PATH, HTML_PATH
-from log import get_logger
+from config import HTML_PATH
+from common.log import get_logger
 from spider import BaiduHandler, WikiSpider, WikiHandler
 
 

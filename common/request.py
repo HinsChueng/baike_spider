@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from requests import exceptions
 from requests.api import request
 
-from log import get_logger
+from common.log import get_logger
 
 logger = get_logger(__name__)
 
