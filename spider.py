@@ -10,7 +10,7 @@ from animals import slice_text_by_animal_org
 from common.file import write_to_file, dict_to_list, write_to_excel
 from common.log import get_logger
 from common.request import get_resp, GET
-from common.slicer import pack_sentence, slice_text, slice_text_by_h2, pack_single_sentence, slice_habit_info
+from common.slicer import slice_text, slice_text_by_h2, slice_habit_info, update
 from config import ORIGIN_EXCEL_PATH, JSON_VERIFIED_PATH
 
 logger = get_logger(__name__)
@@ -86,6 +86,8 @@ class BaiduHandler:
         ]:
             text = re.sub(com, '', text)
 
+        text = text.replace('第工', '第Ⅰ')
+        text = text.replace('第l', '第1')
         return text
 
     def get_summary(self, tag):
@@ -164,14 +166,17 @@ class BaiduHandler:
 
                     if not h3_name:
                         origin[h2_name][content] = {}
-                        sliced[h2_name].update(sliced_info)
+                        data = update(sliced[h2_name], sliced_info)
+                        sliced[h2_name].update(data)
                     else:
+                        data = update(sliced[h2_name].get(h3_name, {}), sliced_info)
+
                         if h3_name in origin[h2_name]:
                             origin[h2_name][h3_name][content] = {}
-                            sliced[h2_name][h3_name].update(sliced_info)
+                            sliced[h2_name][h3_name].update(data)
                         else:
                             origin[h2_name][h3_name] = {content: {}}
-                            sliced[h2_name][h3_name] = sliced_info
+                            sliced[h2_name][h3_name] = data
             except Exception as e:
                 print(e)
                 logger.error(traceback.format_exc())

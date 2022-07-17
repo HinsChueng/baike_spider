@@ -1,11 +1,11 @@
+import json
 import re
 
-from common.slicer import slice_text, pack_sentence
+from common.slicer import slice_text, pack_sentence, slice_organs
 
 
 class AnimalCommon:
     org_slices = {}
-    tiny_slice_delimiter = ';；,，'
 
     def get_org_name(self, text):
         ret, name_regex = '', ''
@@ -16,6 +16,15 @@ class AnimalCommon:
                 break
 
         return ret, name_regex
+
+    @staticmethod
+    def pack_sample(text):
+        ret = dict()
+
+        for item in re.split(r'；;', text):
+            ret[f'标本：{item}'] = {}
+
+        return ret
 
     def slice(self, text):
         ret = dict()
@@ -30,42 +39,25 @@ class AnimalCommon:
             elif sex == '♀':
                 sex = '雌'
 
-            text = text.lstrip('雌雄♀♂：:')
+            text = text.lstrip('雌雄性♀♂：:')
 
-        com = re.compile(r'([\dO]\.[\dO])')
-        regex = r'。' if com.search(text) else '.。'
+        for paragraph in re.split(r'。', text):
+            if text.startswith('标本记录'):
+                ret.update(self.pack_sample(paragraph))
+                continue
 
-        for paragraph in re.split(regex, text):
             name, regex = self.get_org_name(paragraph)
             if name:
-                detail = paragraph.lstrip(name).lstrip(',，其的')
-                cont_dict = self.handle_organ(detail, self.org_slices[regex])
-                ret.update({name: cont_dict})
+                detail = paragraph.lstrip(name).lstrip(',，其的：')
+                cont_dict = slice_organs(detail, self.org_slices[regex])
+                if name not in ret:
+                    ret[name] = cont_dict
+                else:
+                    ret[name].update(cont_dict)
             else:
                 ret.update(slice_text(paragraph))
 
         return {sex: ret} if sex else ret
-
-    def handle_organ(self, organ_text, organ_list):
-        ret = dict()
-        sliced = re.split(r'[%s]' % self.tiny_slice_delimiter, organ_text)
-
-        organ_list = set(organ_list)
-        last_org = '形态'
-
-        for item in sliced:
-            item = item.lstrip('：:')
-            if not item:
-                continue
-
-            for o in organ_list:
-                if item.startswith(o):
-                    last_org = o
-                    break
-
-            ret[f'{last_org}：{item.lstrip(last_org).lstrip(":：")}'] = {}
-
-        return ret
 
 
 class MiXia(AnimalCommon):
@@ -119,68 +111,31 @@ class Luo:
 class Feng(AnimalCommon):
     org_slices = {
         '头': ['触角', '柄节', '上颊', '后头', '头顶', '脸', '蠢基', '唇基', '口窝', '颊', '颚眼', '近后头脊', '近复眼', '顶',
-              '梗节', '索节', '棒节', '微毛区', '端', '颅顶、颊', '颅顶', '颊', '第1鞭节', '第2鞭节', '第3鞭节', '颜面'],
+              '微毛区', '端', '颅顶', '颊', '颜面', 'POL', '下脸'],
+        '翅': ['缘室', 'r脉', 'SR1+3-SR脉', 'SR1+3-SR脉', '2-SR脉', 'cu-a脉', 'M+CU脉'],
         '胸': ['长', '前胸背板', '基节', '后胸', '中胸', '盾', '小盾片', '后胸背板', '基', '并胸腹节'],
-        '足': ['跗爪', '后足腿节', '后足胫节', '后足跗节', '爪'],
-        '腹': ['第1背板', '第2背板', '基区', '第3背板', '其余背板', '第2—3背板', '产卵管', '背脊', '背'],
-        '变异': ['触角', '产卵管', '腹部', '其他']
+        '足': ['跗爪', '后足腿节', '后足胫节', '后足跗节', '爪', '基跗节', '基节', '前后足腿节', '转节', '前后足腿节', '中足', '前后足'],
+        '腹': ['第1背板', '第2背板', '基区', '第3背板', '其余背板', '第2—3背板', '产卵管', '背脊',
+              '背', '气门', '背板', '下生殖板', '鞘', '产卵管', '柄', '前部', '两侧'],
+        '变异': ['触角', '产卵管', '腹部', '其他'],
+        '触角': ['梗节', '索节', '棒节', '柄节', '第1鞭节', '第2鞭节', '第3鞭节', '上端', '第一索节', '第二索节',
+               '腹部第2-6节', '第1—3节', '第4—6节', '第7节', '第6腹板', '生殖刺突']
     }
-
-    @staticmethod
-    def handle_chi(text):
-        ret = dict()
-
-        text = text.lstrip('翅')
-        com = re.compile(r'[；;]')
-        front_com = re.compile(r'([\u4e00-\u9fa5]+)')
-
-        for item in com.split(text):
-            mi = front_com.match(item)
-            if mi and mi[1] != '前翅':
-                info = pack_sentence(item)
-                ret.update(info)
-            else:
-                ret[f'前翅：{item.lstrip("前翅：")}'] = {}
-
-        return {'翅': ret} if ret else ret
 
     def my_slice(self, text):
         ret = dict()
 
-        if text.startswith('翅'):
-            ret.update(self.handle_chi(text))
+        for para in re.split('。', text):
+            com = re.compile(r'(.*?)([深浅黄褐黑锈].*?色)[，；。]')
 
-        elif text.startswith('体色'):
-            last_not_matched_key = ''
             color_info = dict()
-            for item in re.split(r'[；;，。]', text):
-                com = re.compile(r'(.*?)([深浅黄褐].*?色)')
-                res = com.search(item)
-                if res:
-                    key, value = res[1].rstrip('：'), res[2]
-                    color_info[f'{last_not_matched_key + key}：{value}'] = dict()
-                    last_not_matched_key = ''
-                else:
-                    last_not_matched_key = last_not_matched_key + item
+            for item in com.findall(para):
+                color_info[f'{item[0]}：{item[1]}'] = {}
 
-            ret['颜色'] = color_info
-
-        else:
-            org_name = ''
-            for org in self.org_slices.keys():
-                if text.startswith(org):
-                    org_name = org
-                    break
-
-            if org_name:
-                _, regex = self.get_org_name(org_name)
-                ret[org_name] = dict()
-                for item in re.split('。', text):
-                    detail = item.lstrip(org_name).lstrip(',，其的')
-                    cont_dict = self.handle_organ(detail, self.org_slices[regex])
-                    ret[org_name].update(cont_dict)
+            if color_info:
+                ret.update(color_info)
             else:
-                ret.update(self.slice(text))
+                ret.update(self.slice(para))
 
         return ret
 
@@ -190,55 +145,81 @@ class Sou(AnimalCommon):
         '头部': ['头缝', '两侧', '后角', '后缘', '复眼', '触角', '基节', '第1节', '第2节', '第3节', '第4节', '第5节', '其余各节'],
         '前胸背板': ['前缘', '两侧', '后缘', '背面', '中沟', '后翅'],
         '前翅': ['肩角', '外缘', '内后角', '内、外后角', '表面'],
+        '腹部': ['雄虫两侧', '后缘', '后部', '末腹'],
         '末腹': ['背板', '两侧', '后角', '后缘', '后部'],
-        '尾铗': ['前部', '后部', '两支', '顶端', '内缘', '雌虫尾铗'],
-        # '足': ['后足跗节'],
-        # '阳茎': ['阳茎叶端', '阳茎端刺', '基囊'],
+        '尾铗': ['前部', '后部', '两支', '顶端', '内缘', '雌虫尾铗', '基部'],
+        '亚末腹': ['板', '后缘', '表面'],
+        '足': ['后足跗节', '腿节', '腹面'],
+        '臀板': ['基部', '两侧', '后外侧', '后缘', '两后角'],
+        '阳茎': ['阳茎叶端', '阳茎端刺', '基囊'],
+        '鞘翅': ['前翅', '后缘', '后内角', '后翅', '外缘'],
+        '触角': ['基节', '第2节', '第3节', '第4节', '其余各节'],
         '雌虫': ['末腹背板甚', '基部', '两尾铗', '后部', '顶端']
     }
-    tiny_slice_delimiter = ';；'
 
     def my_slice(self, text):
         ret = dict()
 
-        if text.startswith('体长'):
-            for item in re.split(r'[；;]', text):
-                ret[item] = {}
-        else:
-            ret.update(self.slice(text))
+        for item in re.split(r'。', text):
+            if item.startswith('体长'):
+                for p in re.split(r'[；;]', item):
+                    ret[p] = {}
+            else:
+                ret.update(self.slice(item))
 
         return ret
 
 
 class Ya(AnimalCommon):
     org_slices = {
-        '玻片标本': ['头部、胸部', '头部', '胸部', '腹部', '节Ⅲ—Ⅵ', '喙、足', '喙', '足', '跗节', '腹管、尾片',
-                 '腹管', '尾片', '触角', '其他'],
-        '触角': ['节Ⅲ', '节Ⅰ—Ⅵ', '触角毛', '一般各节', '各节', '长毛', '原生感觉圈', '次生感觉圈'],
+        '玻片标本': ['头部、胸部', '头部', '胸部', '腹部', '喙、足', '喙', '足', '跗节', '腹管、尾片',
+                 '腹管', '尾片', '触角', '其他', '中、后胸', '腹'],
+        '触角': ['触角毛', '一般各节', '各节', '长毛', '原生感觉圈', '次生感觉圈', '基部'],
         '腹部': ['背片'],
         '体表': ['头', '腹部', '背片']
     }
-    tiny_slice_delimiter = ';；,，'
 
     def my_slice(self, text):
         ret = dict()
+        com = re.compile(r'([有无]翅孤雌蚜)：?(.*)')
 
-        orgs = ['观察标本']
-        for item in re.split(r'。', text):
-            flag = False
-            for org in orgs:
-                if not item.startswith(org):
-                    continue
-                item = item.lstrip(org).lstrip('：:')
-                info = dict()
-                for k in re.split(r'[;；。]', item):
-                    info[f'{org}：{k}'] = {}
-                ret[org] = info
-                flag = True
-                break
+        for item in com.findall(text):
+            ret.update({item[0].rstrip('：'): self.slice(item[1])})
 
-            if not flag:
-                ret.update(self.slice(item))
+        return ret
+
+
+class Jie(AnimalCommon):
+    org_slices = {
+        '触角': [],
+        '刺孔群': []
+    }
+
+
+class Chun(AnimalCommon):
+    org_slices = {
+        '体': ['体色', '毛', '臭腺'],
+        '前胸背板': ['胝', '亚后缘', '后缘', '刻点', '毛'],
+        '头': ['头宽', '长', '头顶'],
+        '触角': ['第Ⅰ节', '雄虫', '雌'],
+        '前翅': [],
+        '膜片': [],
+        '革片': [],
+        '足': ['股节', '胫节', '后足', '基节', '前、中足', '各足胫节'],
+        r'[左右]阳基': ['侧突', '端突', '端部', '基部', '近端部'],
+        '阳茎': ['鞘', '端针'],
+        '唇基': []
+    }
+
+    def my_slice(self, text):
+
+        ret = dict()
+        data = re.match(r'(量度\(?m{0,2}\)?)', text)
+        if data:
+            org_list = ['体长', '体宽', '头长', '头顶', '触角各节长', '后缘宽', '革片长', '楔片长', '前胸背板', '头宽']
+            ret[data[0]] = slice_organs(text.replace(data[0], '').lstrip('：'), org_list)
+        else:
+            ret.update(self.slice(text))
 
         return ret
 
@@ -256,7 +237,7 @@ def slice_text_by_animal_org(keyword, text):
         ret.update(Luo().slice(text))
 
     elif keyword.endswith('蜂'):
-        ret.update(Feng().my_slice(text))
+        ret.update(Feng().slice(text))
 
     elif keyword.endswith('螋'):
         ret.update(Sou().my_slice(text))
@@ -264,4 +245,20 @@ def slice_text_by_animal_org(keyword, text):
     elif '蚜' in keyword:
         ret.update(Ya().my_slice(text))
 
+    elif '蚧' in keyword:
+        ret.update(Jie().slice(text))
+
+    elif '蝽' in keyword:
+        ret.update(Chun().my_slice(text))
+
     return ret
+
+
+if __name__ == '__main__':
+    text = '体长：8-9mm(♂)，7mm(♀)；尾铗长：4．5～4．8mm(♂)，(雄虫的长尾铗约为12．7mm)，3．4mm(早)。'
+    # data = Sou().my_slice(text)
+    # print(json.dumps(data, ensure_ascii=False))
+    text = "咽椭圆形，大小为0．027—0．028×0．022—0．024mm"
+
+    data = ZhiHuanChong().slice(text)
+    print(json.dumps(data, ensure_ascii=False))
