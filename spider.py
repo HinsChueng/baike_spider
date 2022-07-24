@@ -69,15 +69,7 @@ class WikiHandler:
 
 class BaiduHandler:
     @staticmethod
-    def filter_text(tag):
-        text = ''
-        for t in tag.children:
-            attrs = getattr(t, 'attrs', {})
-            cls_list = attrs.get('class', [])
-            if 'lemma-album' in cls_list:
-                continue
-            text += t.text
-
+    def filter_text(text):
         for com in [
             re.compile(r'\s'),
             re.compile(r'\\xa0'),
@@ -90,18 +82,29 @@ class BaiduHandler:
         text = text.replace('第l', '第1')
         return text
 
+    def get_text_in_tag(self, tag):
+        text = ''
+        for t in tag.children:
+            attrs = getattr(t, 'attrs', {})
+            cls_list = attrs.get('class', [])
+            if 'lemma-album' in cls_list:
+                continue
+            text += t.text
+
+        return self.filter_text(text)
+
     def get_summary(self, tag):
         # 信息概览
         summary_tag = tag.find('div', class_='lemma-summary')
         if not summary_tag:
             return {}, {}
 
-        text = self.filter_text(summary_tag)
+        text = self.get_text_in_tag(summary_tag)
 
         return {text: {}}, slice_habit_info(text)
 
     @staticmethod
-    def get_table(tag):
+    def get_table_in_body(tag):
         ret = dict()
         table_tag = tag.select('table[log-set-param="table_view"]')
         if not table_tag:
@@ -114,6 +117,18 @@ class BaiduHandler:
             for name in remain_names:
                 if name in content:
                     ret[content] = {}
+
+        return ret
+
+    def get_table(self, tag):
+        ret = dict()
+        table_tag = tag.find('div', class_='basic-info')
+        if not table_tag:
+            return ret
+
+        for key_tag, val_tag in zip(table_tag.find_all('dt'), table_tag.find_all('dd')):
+            k, v = self.filter_text(key_tag.text), self.filter_text(val_tag.text)
+            ret[f'{k}：{v}'] = {}
 
         return ret
 
@@ -154,7 +169,7 @@ class BaiduHandler:
                     sliced[h2_name][h3_name] = {}
 
                 elif tag_name == 'para':
-                    content = self.filter_text(tag)
+                    content = self.get_text_in_tag(tag)
                     if not content:
                         continue
 
@@ -199,13 +214,15 @@ class BaiduHandler:
         origin_summary, sliced_summary = self.get_summary(content_tag)
         # 表格
         table = self.get_table(content_tag)
+        # 正文中的表格
+        table_in_body = self.get_table_in_body(content_tag)
         # 详细信息
         origin, sliced = self.get_main_body_dict(content_tag, keyword)
 
-        sliced_result = {'summary': sliced_summary, 'main_body': sliced, 'table': table}
+        sliced_result = {'summary': sliced_summary, 'main_body': sliced, 'table_in_body': table_in_body}
         write_to_file(f'{JSON_VERIFIED_PATH}/{keyword}.json', json.dumps(sliced_result, ensure_ascii=False))
 
-        origin_result = {'summary': origin_summary, 'main_body': origin, 'table': table}
+        origin_result = {'summary': origin_summary, 'table': table, 'main_body': origin, 'table_in_body': table_in_body}
         header, data_list = dict_to_list(keyword, **origin_result)
         write_to_excel(f'{ORIGIN_EXCEL_PATH}/{keyword}.xlsx', header, data_list)
 

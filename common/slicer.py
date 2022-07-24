@@ -92,6 +92,10 @@ def slice_habit_info(text):
 
         elif '分布' in item and '：' not in item:
             ret[f'分布范围：{item.lstrip("分布")}'] = dict()
+
+        elif item.startswith('淡水'):
+            ret[f'水质条件：{item}'] = dict()
+
         else:
             ret.update(pack_single_sentence(item))
 
