@@ -232,16 +232,3 @@ def slice_organs(organ_text, organ_list):
         ret.update(slice_organ(item, organ_list))
 
     return ret
-
-# if __name__ == '__main__':
-#     chi = ['体长', '体宽', '头长', '头顶', '触角各节长', '后缘宽', '革片长', '楔片长', '前胸背板', '头宽']
-#
-#     text = '量度(mm)：体长6．65--7．5 1，体宽2．38"-2．80。头长0．44-~0．50，头宽1．1 3～1．1 6，头顶宽(分)0．42， (早)0．46。触角各节长0．6 1～0．72：1．87～2．，01：0．91～1．02：0．44～O．63。前胸背板长0．99^一1．12，后缘宽2．01～2．35。革片长3．22"一3．68，楔片长0．99～1．12。'
-#
-#     data = slice_organ(text, chi)
-#     print(data)
-# jieba.suggest_freq('SR1+3-SR', True)
-# jieba.add_word('1-R1脉')
-
-# data = jieba.cut('SR1+3-SR脉长为r脉的8．5-12．5倍，SR1+3-SR脉前部稍弯曲，后方直；')
-# print([w for w in data])

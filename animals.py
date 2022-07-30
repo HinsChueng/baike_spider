@@ -1,7 +1,6 @@
-import json
 import re
 
-from common.slicer import slice_text, pack_sentence, slice_organs
+from common.slicer import slice_text, slice_organs
 
 
 class AnimalCommon:
@@ -253,11 +252,3 @@ def slice_text_by_animal_org(keyword, text):
         ret.update(Chun().my_slice(text))
 
     return ret
-
-
-if __name__ == '__main__':
-    text = '中央大钩全长0.030-0.033mm，基部长0.026-0.028mm，内突0.009-0.010mm，外突0.003-0.004mm，钩尖长0.018-0.020mm。联结片单一，两端膨大似鼻状突起，大小0.003-0.006×0.021-0.028mm'
-
-    data = ZhiHuanChong().slice(text)
-
-    print(json.dumps(data, ensure_ascii=False))
